@@ -1,0 +1,28 @@
+{
+    "name": "tekkenking/echoman",
+    "description": "Manages Json response and maintain consistency when returning from server side to front end",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Tekkenking\\Echoman\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Temitayo",
+            "email": "bucketcodes@gmail.com"
+        }
+    ],
+    "require": {},
+    "extra": {
+        "laravel": {
+            "providers": [
+                "PixxelServiceProvider"
+            ],
+            "aliases": {
+                "Echoman": "PixxelFacade"
+            }
+        }
+    }
+}
