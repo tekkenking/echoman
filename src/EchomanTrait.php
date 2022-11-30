@@ -75,7 +75,7 @@ trait EchomanTrait
      */
     public function sendValidationError(
         Validator $validator,
-        int $statuscode = 200,
+        int $statuscode = 422,
         bool $exception = false): JsonResponse
     {
         return $this->sendEcho()
