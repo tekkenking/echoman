@@ -14,7 +14,9 @@
             "email": "bucketcodes@gmail.com"
         }
     ],
-    "require": {},
+    "require": {
+        "php": "^8.1"
+    },
     "extra": {
         "laravel": {
             "providers": [
