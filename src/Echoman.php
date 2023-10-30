@@ -4,66 +4,29 @@ declare(strict_types=1);
 
 namespace Tekkenking\Echoman;
 
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Contracts\View\Factory;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Request;
 use Illuminate\Validation\Validator;
+use Illuminate\View\View;
 
 class Echoman
 {
-    /**
-     * @var array
-     */
     private array $data;
 
-    /**
-     * @var int
-     */
     private int $statusCode;
 
     /**
      * @param string $status
      * @return $this
      */
-    public function status(string $status): Echoman
+    public function status(string $status): self
     {
         $this->data['status'] = $status;
         return $this;
-    }
-
-    /**
-     * @param string $type
-     * @param string $msg
-     * @param int $status
-     * @param array $data
-     * @return JsonResponse
-     */
-    private function commonDefaults(string $type, string $msg, int $status, array $data): JsonResponse
-    {
-        return $this->status($type)
-            ->message($msg)
-            ->data($data)
-            ->get($status);
-    }
-
-    /**
-     * @param string $msg
-     * @param int $status
-     * @param array $data
-     * @return JsonResponse
-     */
-    public function error(string $msg, int $status = 200, array $data = []): JsonResponse
-    {
-        return $this->commonDefaults('error', $msg, $status, $data);
-    }
-
-    /**
-     * @param string $msg
-     * @param int $status
-     * @param array $data
-     * @return JsonResponse
-     */
-    public function success(string $msg, int $status = 200, array $data = []): JsonResponse
-    {
-        return $this->commonDefaults('success', $msg, $status, $data);
     }
 
     /**
@@ -85,24 +48,17 @@ class Echoman
     }
 
     /**
-     * @param Validator $validator
-     * @param string $msg
-     * @param bool $exception
-     * @return Echoman
      * @throws EchomanException
      */
-    public function throwValidationError(
-        Validator $validator,
-        string $msg='validation failed',
-        bool $exception = true): Echoman
+    public function throwValidationError(Validator $validator, $msg='validation failed'): void
     {
-        return $this->validationError($validator, $msg, $exception);
+        $this->validationError($validator, $msg, true);
     }
 
     /**
      * @throws EchomanException
      */
-    public function throwError(string $msg, int $code=400)
+    public function throwError(string $msg, int $code=400): void
     {
         $this->status('error')
             ->message($msg);
@@ -121,21 +77,22 @@ class Echoman
     }
 
     /**
-     * @param string|null $msg
+     * @param string $msg
      * @param int $code
      * @return void
      * @throws EchomanException
      */
-    public function oops(string | null $msg = null, int $code = 500): void
+    public function throwOops(string $msg ="Oops! something went wrong", int $code = 500): void
     {
-        $this->exception( $msg ?? 'Oops! something went wrong', $code);
+        $this->throwError($msg, $code);
     }
+
 
     /**
      * @param string $msg
-     * @return $this
+     * @return Echoman
      */
-    public function message(string $msg): self
+    public function message(string $msg): Echoman
     {
         if($msg) {
             $this->data['message'] = $msg;
@@ -145,9 +102,9 @@ class Echoman
 
     /**
      * @param array|string $msg
-     * @return $this
+     * @return Echoman
      */
-    public function messages(array | string $msg): self
+    public function messages(array | string $msg): Echoman
     {
         if($msg) {
             if(is_array($msg)) {
@@ -161,7 +118,7 @@ class Echoman
 
     /**
      * @param $data
-     * @return $this
+     * @return Echoman
      */
     public function data($data): Echoman
     {
@@ -179,22 +136,96 @@ class Echoman
         return $this->data;
     }
 
-    /**
-     * @return int
-     */
     public function getStatusCode(): int
     {
         return $this->statusCode;
     }
 
     /**
-     * @param int $code
-     * @return JsonResponse
+     * @param string $name
+     * @param array $data
+     * @return $this
      */
-    public function get(int $code=200): JsonResponse
+    public function view(string $name, array $data = []): Echoman
+    {
+        if($name) {
+            $this->data['view'] = $name;
+            $this->data['view_data'] = $data;
+        }
+        return $this;
+    }
+
+    /**
+     * @param mixed $data
+     * @param int $code
+     * @throws EchomanException
+     */
+    public function dd(mixed $data, int $code = 400)
+    {
+        $this->data['message'] = 'dump die';
+        $this->data['data'] = $data;
+        throw new EchomanException($this->get($code));
+    }
+
+    /**
+     * @param int $code
+     * @return Factory|Response|JsonResponse|View|Application|ResponseFactory|string
+     * @throws EchomanException
+     */
+    public function get(int $code=200): Factory|Response|JsonResponse|View|Application|ResponseFactory|string
     {
         $this->statusCode = $code;
+
+        if(Request::header('Call-type') && Request::header('Call-type') === 'api-call'){
+            return response()->json($this->data, $this->statusCode);
+        }
+
         $this->data['status'] = $this->data['status'] ?? 'success';
-        return response()->json($this->data, $this->statusCode);
+
+        if(Request::ajax() && isset($this->data['view']) && !empty($this->data['view'])) {
+            return $this->makeViewBlade(true);
+        }
+
+        if(Request::ajax()) {
+            return response()->json($this->data, $this->statusCode);
+        }
+
+        if(isset($this->data['view']) && !empty($this->data['view'])){
+            //View is needed
+            return $this->makeViewBlade();
+        }
+
+        $this->data['message'] = 'Unknown return type';
+        throw new EchomanException('Exception: Could not determine if it\'s json or blade response');
+        //return response($this->data, $this->statusCode);
+    }
+
+    /**
+     * @param bool $isRender
+     * @return Application|Factory|\Illuminate\Contracts\View\View|string
+     */
+    private function makeViewBlade(bool $isRender = false): \Illuminate\Contracts\View\View|Factory|string|Application
+    {
+        $viewFile = $this->data['view'];
+
+        if(isset($this->data['view_data']) && !empty($this->data['view_data'])) {
+            //A separate view data is passed
+            $viewData = $this->data['view_data'];
+        }
+
+        elseif(isset($this->data['data'])) {
+            $viewData = $this->data['data'];
+        }
+
+        else {
+            $viewData = [];
+        }
+
+        if($isRender) {
+            return view($viewFile, $viewData)->render();
+        }
+
+        //return theme_view($viewFile, $viewData);
+        return view($viewFile, $viewData);
     }
 }
