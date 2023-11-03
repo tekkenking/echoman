@@ -50,9 +50,9 @@ class Echoman
     /**
      * @throws EchomanException
      */
-    public function throwValidationError(Validator $validator, $msg='validation failed'): void
+    public function throwValidationError(Validator $validator, $msg='validation failed', $throwException = true): mixed
     {
-        $this->validationError($validator, $msg, true);
+        return $this->validationError($validator, $msg, $throwException);
     }
 
     /**
