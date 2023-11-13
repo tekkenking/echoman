@@ -14,7 +14,7 @@ trait EchomanTrait
      */
     public function sendEcho(): Echoman
     {
-        return echoman();
+        return new Echoman();
     }
 
     /**

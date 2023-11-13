@@ -6,6 +6,10 @@ namespace Composer\Autoload;
 
 class ComposerStaticInit728ead097f62208d57ff4e5cadc6576e
 {
+    public static $files = array (
+        '4c75175db32bb7eeec689f778e4ade43' => __DIR__ . '/../..' . '/src/EchomanHelpers.php',
+    );
+
     public static $prefixLengthsPsr4 = array (
         'T' => 
         array (

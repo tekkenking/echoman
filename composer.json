@@ -6,7 +6,10 @@
     "autoload": {
         "psr-4": {
             "Tekkenking\\Echoman\\": "src/"
-        }
+        },
+        "files": [
+            "src/EchomanHelpers.php"
+        ]
     },
     "authors": [
         {
